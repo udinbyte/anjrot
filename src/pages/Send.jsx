@@ -1,26 +1,17 @@
 // pages/Send.jsx
 import { useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { motion } from "framer-motion";
-import { 
-  ArrowLeft, 
-  Send, 
-  User, 
-  Coins,
-  AlertCircle,
-  CheckCircle
-} from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import { ArrowLeft, Send, User, Coins, AlertCircle, CheckCircle } from "lucide-react";
 import { doc, updateDoc, arrayUnion, getDoc, serverTimestamp } from "firebase/firestore";
+import { toast } from "react-hot-toast";
 
 import { db } from "../firebase/config";
-import { selectUser, updateBalance, addTransaction } from "../store/features/userSlice";
-import { setMessage } from "../store/features/appSlice";
+import useAuthStore from "../store/authStore";
 
 export default function SendPage() {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
-  const user = useSelector(selectUser);
+  const { user, updateBalance, addTransaction } = useAuthStore();
   const [address, setAddress] = useState("");
   const [amount, setAmount] = useState("");
   const [step, setStep] = useState("form");
@@ -43,11 +34,11 @@ export default function SendPage() {
   const handleSend = () => {
     if (!address || !amount) return;
     if (parseFloat(amount) > balance) {
-      dispatch(setMessage({ text: "❌ Saldo tidak cukup!", type: "error" }));
+      toast.error("❌ Saldo tidak cukup!");
       return;
     }
     if (!isValidAddress(address)) {
-      dispatch(setMessage({ text: "❌ Alamat tidak valid!", type: "error" }));
+      toast.error("❌ Alamat tidak valid!");
       return;
     }
     setStep("confirm");
@@ -62,7 +53,7 @@ export default function SendPage() {
       const receiverDoc = await getDoc(receiverRef);
 
       if (!receiverDoc.exists()) {
-        dispatch(setMessage({ text: "❌ Penerima tidak ditemukan!", type: "error" }));
+        toast.error("❌ Penerima tidak ditemukan!");
         setStep("form");
         setIsLoading(false);
         return;
@@ -100,8 +91,8 @@ export default function SendPage() {
         })
       });
 
-      dispatch(updateBalance(newBalance));
-      dispatch(addTransaction({
+      updateBalance(newBalance);
+      addTransaction({
         id: `tx_${Date.now()}`,
         type: "send",
         asset: "ANJROT",
@@ -110,14 +101,14 @@ export default function SendPage() {
         status: "completed",
         timestamp: new Date().toISOString(),
         note: `Kirim ke ${address.slice(0, 10)}...`
-      }));
+      });
 
       setStep("success");
-      dispatch(setMessage({ text: `✅ Berhasil kirim ${amountNum} ANJROT!`, type: "success" }));
+      toast.success(`✅ Berhasil kirim ${amountNum} ANJROT!`);
       setTimeout(() => navigate("/wallet"), 2000);
     } catch (error) {
       console.error("Send error:", error);
-      dispatch(setMessage({ text: "❌ Gagal kirim!", type: "error" }));
+      toast.error("❌ Gagal kirim!");
       setStep("form");
     } finally {
       setIsLoading(false);

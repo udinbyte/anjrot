@@ -3,12 +3,11 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 
-// 🔥 IMPORT ICON
 import home from "../assets/home.png";
 import wallet from "../assets/wallet.png";
 import friend from "../assets/friend.png";
-import hashrateIcon from "../assets/wallet.png"; // ⚡ ikon hashrate
-import trophy from "../assets/wallet.png"; // 🏆 ikon leaderboard
+import hashrateIcon from "../assets/wallet.png";
+import trophy from "../assets/wallet.png";
 
 export default function BottomNavbar() {
   const navigate = useNavigate();
@@ -29,14 +28,12 @@ export default function BottomNavbar() {
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 px-3 pb-3">
-      {/* 🔥 GLASSMORPHISM CONTAINER - DARK GRADIENT */}
       <motion.div
         className="relative bg-gradient-to-br from-gray-900 to-black border border-white/10 rounded-3xl shadow-2xl shadow-black/50 overflow-hidden"
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ type: "spring", bounce: 0.3 }}
       >
-        {/* 🔥 DECORATIVE GLOW */}
         <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-40 h-40 bg-orange-500/15 rounded-full blur-3xl" />
         <div className="absolute -bottom-12 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-3xl" />
 
@@ -52,7 +49,6 @@ export default function BottomNavbar() {
                 whileTap={{ scale: 0.9 }}
                 whileHover={{ y: -2 }}
               >
-                {/* 🔥 BACKGROUND AKTIF (FLOATING BUBBLE) */}
                 {isActive && (
                   <motion.div
                     layoutId="activeBubble"
@@ -61,9 +57,7 @@ export default function BottomNavbar() {
                   />
                 )}
 
-                {/* 🔥 ICON CONTAINER */}
                 <div className="relative">
-                  {/* 🔥 GLOW PING ANIMATION */}
                   {isActive && (
                     <motion.div
                       className="absolute inset-0 rounded-full bg-orange-500/30"
@@ -97,7 +91,6 @@ export default function BottomNavbar() {
                     />
                   </motion.div>
 
-                  {/* 🔥 ACTIVE DOT */}
                   {isActive && (
                     <motion.div
                       initial={{ scale: 0 }}
@@ -107,7 +100,6 @@ export default function BottomNavbar() {
                   )}
                 </div>
 
-                {/* 🔥 LABEL */}
                 <motion.span
                   className={`text-[10px] font-medium mt-1 transition-all duration-300 ${
                     isActive ? "text-orange-400" : "text-gray-400"

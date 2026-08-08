@@ -1,5 +1,5 @@
-// store/features/hashrateSlice.js
-import { createSlice } from '@reduxjs/toolkit';
+// store/hashrateStore.js
+import { create } from 'zustand';
 
 const PACKS = [
   { id: 'basic', name: 'Basic', hashrate: 0.0001, priceANJROT: 500, duration: '30 hari', icon: '⚡', popular: false },
@@ -9,28 +9,11 @@ const PACKS = [
   { id: 'legendary', name: 'Legendary', hashrate: 0.02, priceANJROT: 50000, duration: '365 hari', icon: '🌟', popular: false },
 ];
 
-const initialState = {
+const useHashrateStore = create((set) => ({
   packs: PACKS,
   isLoading: false,
-  purchaseHistory: [],
-};
 
-const hashrateSlice = createSlice({
-  name: 'hashrate',
-  initialState,
-  reducers: {
-    setPacks: (state, action) => {
-      state.packs = action.payload;
-    },
-    setLoading: (state, action) => {
-      state.isLoading = action.payload;
-    },
-    addPurchase: (state, action) => {
-      state.purchaseHistory.push(action.payload);
-    },
-  },
-});
+  setLoading: (loading) => set({ isLoading: loading }),
+}));
 
-export const { setPacks, setLoading, addPurchase } = hashrateSlice.actions;
-export const selectHashrate = (state) => state.hashrate;
-export default hashrateSlice.reducer;
+export default useHashrateStore;

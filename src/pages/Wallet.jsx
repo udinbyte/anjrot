@@ -1,28 +1,13 @@
 // pages/Wallet.jsx
 import { useState } from "react";
-import { useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-  ArrowUpRight, 
-  ArrowDownLeft, 
-  Copy,
-  Eye,
-  EyeOff,
-  Send,
-  QrCode,
-  ArrowLeft,
-  ArrowUpDown,
-  Coins,
-  History,
-  Clock,
-  CheckCircle,
-  XCircle
+  ArrowUpRight, ArrowDownLeft, Copy, Eye, EyeOff, Send, QrCode, ArrowLeft,
+  Coins, History, Clock, CheckCircle, XCircle
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import useAuthStore from "../store/authStore";
 
-import { selectUser } from "../store/features/userSlice";
-
-// 🔥 IMPORT SEMUA LOGO ASET
 import anjrot from "../assets/logo.png";
 import bitcoin from "../assets/coin/bitcoin.png";
 import solana from "../assets/coin/solana.png";
@@ -32,7 +17,6 @@ import polkadot from "../assets/coin/polkadot.png";
 import shiba from "../assets/coin/shiba.png";
 import tron from "../assets/coin/trx.png";
 
-// 🔥 MAPPING IKON BERDASARKAN SYMBOL
 const assetIcons = {
   ANJROT: anjrot,
   BTC: bitcoin,
@@ -46,32 +30,27 @@ const assetIcons = {
 
 export default function Wallet() {
   const navigate = useNavigate();
-  const user = useSelector(selectUser);
+  const { user } = useAuthStore();
   const [showBalance, setShowBalance] = useState(true);
-  const [activeTab, setActiveTab] = useState("assets");
+  const [activeTab, setActiveTab] = useState("history");
   const [copied, setCopied] = useState(false);
 
-  // 🔥 DATA DARI REDUX
   const balance = user?.balance || 0;
   const walletAddress = user?.walletAddress || `ANJROT-${user?.uid?.slice(0, 8) || 'xxxx'}-${user?.uid?.slice(-8) || 'xxxx'}`;
   const transactions = user?.transactions || [];
-  
-  // 🔥 ASSETS DARI REDUX
   const assets = user?.assets || {
-    ANJROT: { symbol: "ANJROT", balance: 0, usdValue: 0 },
+    ANJROT: { symbol: "ANJROT", balance: balance, usdValue: 0 },
     BTC: { symbol: "BTC", balance: 0, usdValue: 0 },
     SOL: { symbol: "SOL", balance: 0, usdValue: 0 },
     USDT: { symbol: "USDT", balance: 0, usdValue: 0 },
   };
 
-  // 🔥 SORT HISTORY (NEWEST FIRST)
   const sortedHistory = [...transactions].sort((a, b) => {
     const timeA = a.timestamp?.toMillis?.() || a.timestamp || 0;
     const timeB = b.timestamp?.toMillis?.() || b.timestamp || 0;
     return timeB - timeA;
   });
 
-  // 🔥 FORMAT FUNCTIONS
   const formatDate = (timestamp) => {
     if (!timestamp) return "Baru saja";
     let date;
@@ -102,7 +81,6 @@ export default function Wallet() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // 🔥 HISTORY HELPERS
   const getHistoryIcon = (type) => {
     switch(type) {
       case 'receive': return <ArrowDownLeft className="w-5 h-5 text-green-400" />;
@@ -170,7 +148,6 @@ export default function Wallet() {
     return null;
   };
 
-  // 🔥 AMBIL ASSET LIST DARI REDUX
   const assetList = Object.entries(assets).map(([symbol, data]) => ({
     symbol,
     name: data.name || symbol,
@@ -179,7 +156,6 @@ export default function Wallet() {
     logo: assetIcons[symbol] || anjrot,
   }));
 
-  // 🔥 ANJROT TOKEN UNTUK CARD
   const anjrotAsset = assetList.find(a => a.symbol === "ANJROT") || {
     symbol: "ANJROT",
     balance: balance,
@@ -190,14 +166,10 @@ export default function Wallet() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black pb-28">
       
-      {/* 🔥 HEADER + BACK BUTTON */}
       <div className="relative z-10">
         <div className="px-4 pt-8 pb-4">
           <div className="flex items-center gap-3">
-            <button 
-              onClick={() => navigate("/")}
-              className="p-2 bg-white/5 rounded-xl hover:bg-white/10 transition-all"
-            >
+            <button onClick={() => navigate("/")} className="p-2 bg-white/5 rounded-xl hover:bg-white/10 transition-all">
               <ArrowLeft className="w-5 h-5 text-white" />
             </button>
             <h1 className="text-2xl font-bold text-white flex-1">Dompet</h1>
@@ -207,11 +179,10 @@ export default function Wallet() {
           </div>
         </div>
 
-        {/* 🔥 BALANCE CARD - ANJROT TOKEN */}
         <div className="mx-4 p-6 bg-gradient-to-br from-gray-800/50 to-gray-900/50 rounded-3xl border border-white/10 backdrop-blur-xl">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-400 font-medium">Token Balance</p>
+              <p className="text-sm text-gray-400 font-medium">Saldo</p>
               <div className="flex items-center gap-3 mt-1">
                 <motion.h2 
                   className="text-3xl font-bold text-white"
@@ -220,55 +191,36 @@ export default function Wallet() {
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.3 }}
                 >
-                  {showBalance ? `${formatNumber(anjrotAsset?.balance || 0)}` : "••••••"}
+                  {showBalance ? `${formatNumber(anjrotAsset?.balance || 0)} ANJROT` : "••••••"}
                 </motion.h2>
-                <button 
-                  onClick={() => setShowBalance(!showBalance)}
-                  className="p-1.5 bg-white/5 rounded-lg hover:bg-white/10 transition-all"
-                >
-                  {showBalance ? 
-                    <EyeOff className="w-4 h-4 text-gray-400" /> : 
-                    <Eye className="w-4 h-4 text-gray-400" />
-                  }
+                <button onClick={() => setShowBalance(!showBalance)} className="p-1.5 bg-white/5 rounded-lg hover:bg-white/10 transition-all">
+                  {showBalance ? <EyeOff className="w-4 h-4 text-gray-400" /> : <Eye className="w-4 h-4 text-gray-400" />}
                 </button>
               </div>
-              <p className="text-xs text-gray-500 mt-0.5">≈ ${(anjrotAsset?.usdValue || 0).toFixed(2)} USD</p>
+              <p className="text-xs text-gray-500 mt-0.5">≈ $0.00</p>
             </div>
-            
-            {/* 🔥 LOGO TOKEN ANJROT */}
             <div className="w-16 h-16 rounded-full overflow-hidden bg-white/10 flex items-center justify-center p-2 border-2 border-orange-500/30 shadow-lg shadow-orange-500/20">
-              <img 
-                src={anjrot} 
-                alt="ANJROT"
-                className="w-full h-full object-contain"
-              />
+              <img src={anjrot} alt="ANJROT" className="w-full h-full object-contain" />
             </div>
           </div>
 
-          {/* 🔥 QUICK ACTIONS */}
-          <div className="flex gap-3 mt-6">
-            <button 
-              onClick={() => navigate("/send")}
-              className="flex-1 py-3 bg-gradient-to-r from-orange-500 to-amber-500 rounded-xl text-sm font-medium text-white hover:scale-105 transition-all flex items-center justify-center gap-2 shadow-lg shadow-orange-500/25"
-            >
+          <div className="mt-4 p-2.5 bg-white/5 rounded-xl flex items-center justify-between border border-white/5">
+            <p className="text-gray-400 text-[10px] font-mono truncate flex-1">{walletAddress}</p>
+            <button onClick={copyAddress} className="p-1.5 bg-white/10 rounded-lg hover:bg-white/20 transition-all">
+              {copied ? <CheckCircle className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5 text-gray-400" />}
+            </button>
+          </div>
+
+          <div className="flex gap-3 mt-4">
+            <button onClick={() => navigate("/send")} className="flex-1 py-2.5 bg-gradient-to-r from-orange-500 to-amber-500 rounded-xl text-sm font-medium text-white hover:scale-105 transition-all flex items-center justify-center gap-2 shadow-lg shadow-orange-500/25">
               <Send className="w-4 h-4" /> Kirim
             </button>
-            <button 
-              onClick={() => navigate("/receive")}
-              className="flex-1 py-3 bg-white/10 rounded-xl text-sm font-medium text-white hover:bg-white/20 transition-all flex items-center justify-center gap-2"
-            >
+            <button onClick={() => navigate("/receive")} className="flex-1 py-2.5 bg-white/10 rounded-xl text-sm font-medium text-white hover:bg-white/20 transition-all flex items-center justify-center gap-2">
               <ArrowDownLeft className="w-4 h-4" /> Terima
-            </button>
-            <button 
-              onClick={() => navigate("/swap")}
-              className="flex-1 py-3 bg-white/10 rounded-xl text-sm font-medium text-white hover:bg-white/20 transition-all flex items-center justify-center gap-2"
-            >
-              <ArrowUpDown className="w-4 h-4" /> Swap
             </button>
           </div>
         </div>
 
-        {/* 🔥 TABS */}
         <div className="flex mx-4 mt-6 bg-white/5 rounded-2xl p-1">
           <button
             onClick={() => setActiveTab("assets")}
@@ -293,8 +245,7 @@ export default function Wallet() {
         </div>
       </div>
 
-      {/* 🔥 SCROLLABLE CONTENT */}
-      <div className="px-4 mt-4 max-h-[calc(100vh-440px)] overflow-y-auto scrollbar-hide">
+      <div className="px-4 mt-4 max-h-[calc(100vh-480px)] overflow-y-auto scrollbar-hide">
         <AnimatePresence mode="wait">
           {activeTab === "assets" ? (
             <motion.div
@@ -314,11 +265,7 @@ export default function Wallet() {
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full overflow-hidden bg-white/10 flex items-center justify-center p-1">
-                      <img 
-                        src={asset.logo} 
-                        alt={asset.symbol}
-                        className="w-full h-full object-contain"
-                      />
+                      <img src={asset.logo} alt={asset.symbol} className="w-full h-full object-contain" />
                     </div>
                     <div>
                       <p className="text-white font-medium text-sm">{asset.symbol}</p>

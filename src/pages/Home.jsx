@@ -1,42 +1,25 @@
 // pages/Home.jsx
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { 
-  User, 
-  Trophy, 
-  Zap, 
-  Clock,
-  Coins,
-  TrendingUp,
-  Gift,
-  Rocket,
-  ChevronRight,
-  Flame,
-  Award,
-  Sparkles,
-  Menu
+  User, Trophy, Zap, Clock, Coins, TrendingUp, Gift, Rocket, ChevronRight, Flame
 } from "lucide-react";
-import { doc, updateDoc, serverTimestamp, arrayUnion, getDoc } from "firebase/firestore";
+import { doc, updateDoc, serverTimestamp, arrayUnion } from "firebase/firestore";
+import { toast } from "react-hot-toast";
 
 import { db } from "../firebase/config";
-import { selectUser, updateBalance, updateMining, addTransaction } from "../store/features/userSlice";
-import { setMessage } from "../store/features/appSlice";
-
+import useAuthStore from "../store/authStore";
 import bg from "../assets/bg.png";
 import MiningButton from "../components/MiningButton";
 
 export default function Home() {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
-  const user = useSelector(selectUser);
-
+  const { user, updateBalance, updateMining, addTransaction } = useAuthStore();
   const [timeLeft, setTimeLeft] = useState(0);
   const [progress, setProgress] = useState(0);
   const [claimable, setClaimable] = useState(0);
 
-  // 🔥 FORMAT NUMBER
   const formatNumber = (num) => {
     if (!num) return "0";
     if (num >= 1e9) return (num / 1e9).toFixed(2) + "B";
@@ -45,7 +28,6 @@ export default function Home() {
     return num.toFixed(4);
   };
 
-  // 🔥 FORMAT TIME
   const formatTime = (seconds) => {
     if (seconds <= 0) return "00:00:00";
     const hours = Math.floor(seconds / 3600);
@@ -56,7 +38,6 @@ export default function Home() {
       .padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
-  // 🔥 CALCULATE MINING PROGRESS
   useEffect(() => {
     if (user?.mining?.isActive && user?.mining?.startedAt) {
       const interval = setInterval(() => {
@@ -67,7 +48,7 @@ export default function Home() {
         const earned = elapsed * rate;
         setClaimable(earned);
 
-        const totalDuration = 3600; // 1 jam
+        const totalDuration = 3600;
         const remaining = Math.max(0, totalDuration - elapsed);
         setTimeLeft(remaining);
         const progressPercent = Math.min(100, (elapsed / totalDuration) * 100);
@@ -81,7 +62,6 @@ export default function Home() {
     }
   }, [user?.mining?.isActive, user?.mining?.startedAt, user?.mining?.rate]);
 
-  // 🔥 CLAIM REWARDS
   const handleClaim = async () => {
     if (claimable < 0.0001) return;
     try {
@@ -104,13 +84,13 @@ export default function Home() {
         })
       });
 
-      dispatch(updateBalance(newBalance));
-      dispatch(updateMining({
+      updateBalance(newBalance);
+      updateMining({
         totalEarned: (user.mining.totalEarned || 0) + claimable,
         startedAt: new Date().toISOString(),
         claimable: 0
-      }));
-      dispatch(addTransaction({
+      });
+      addTransaction({
         id: `tx_${Date.now()}`,
         type: "mining",
         asset: "ANJROT",
@@ -118,13 +98,13 @@ export default function Home() {
         status: "completed",
         timestamp: new Date().toISOString(),
         note: "Hasil mining"
-      }));
+      });
       
       setClaimable(0);
-      dispatch(setMessage({ text: `✅ Berhasil claim ${claimable.toFixed(4)} ANJROT!`, type: "success" }));
+      toast.success(`✅ Berhasil claim ${claimable.toFixed(4)} ANJROT!`);
     } catch (error) {
       console.error("Claim error:", error);
-      dispatch(setMessage({ text: "❌ Gagal claim mining", type: "error" }));
+      toast.error("❌ Gagal claim mining");
     }
   };
 
@@ -135,7 +115,6 @@ export default function Home() {
     >
       <div className="min-h-screen bg-black/60 backdrop-blur-sm pb-28">
         
-        {/* 🔥 HEADER */}
         <div className="px-4 pt-6 flex items-center justify-between">
           <div 
             className="flex items-center gap-3 cursor-pointer"
@@ -172,7 +151,6 @@ export default function Home() {
           </button>
         </div>
 
-        {/* 🔥 BALANCE */}
         <div className="text-center mt-4">
           <p className="text-gray-400 text-xs">Saldo</p>
           <motion.h1 
@@ -186,12 +164,10 @@ export default function Home() {
           <p className="text-orange-400 text-xs mt-1">≈ $0.00</p>
         </div>
 
-        {/* 🔥 MINING BUTTON */}
         <div className="flex justify-center mt-2">
           <MiningButton claimable={claimable} onClaim={handleClaim} />
         </div>
 
-        {/* 🔥 PROGRESS BAR */}
         {user?.mining?.isActive && (
           <div className="mx-6 mt-2">
             <div className="flex justify-between text-xs text-gray-400 mb-1">
@@ -215,7 +191,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* 🔥 QUICK STATS CARDS */}
         <div className="mx-6 mt-4 grid grid-cols-3 gap-2">
           <div className="bg-white/5 rounded-xl p-3 text-center border border-white/5">
             <div className="flex items-center justify-center gap-1">
@@ -249,7 +224,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* 🔥 QUICK MENU CARDS */}
         <div className="mx-6 mt-4 grid grid-cols-2 gap-3">
           <div 
             className="p-4 bg-gradient-to-br from-gray-800/50 to-gray-900/50 rounded-2xl border border-white/10 backdrop-blur-sm cursor-pointer hover:border-orange-500/30 transition-all"
@@ -281,7 +255,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* 🔥 DAILY REWARD CARD */}
         <div 
           className="mx-6 mt-4 cursor-pointer"
           onClick={() => navigate("/daily")}

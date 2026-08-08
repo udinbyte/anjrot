@@ -1,63 +1,30 @@
 // pages/Login.jsx
 import { useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
-import { signInWithPopup, signInWithRedirect, getRedirectResult } from 'firebase/auth';
-import { auth, googleProvider } from '../firebase/config';
-import { setMessage, setReferralCode, clearReferralCode } from '../store/features/appSlice';
+import { useNavigate } from 'react-router-dom';
 import { FcGoogle } from 'react-icons/fc';
+import { toast } from 'react-hot-toast';
 
+import useAuthStore from '../store/authStore';
 import bg from '../assets/bg.png';
 import logo from '../assets/logo.png';
 
 export default function Login() {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
-  const location = useLocation();
+  const { login, isAuthenticated, isLoading } = useAuthStore();
 
-  // 🔥 CEK PARAMETER REFERRAL DARI URL
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const refCode = params.get('ref');
-    
-    if (refCode) {
-      dispatch(setReferralCode(refCode));
-      console.log('🔥 Referral code detected:', refCode);
-    } else {
-      dispatch(clearReferralCode());
+    if (isAuthenticated) {
+      navigate('/');
     }
-  }, [location, dispatch]);
-
-  // 🔥 HANDLE REDIRECT RESULT
-  useEffect(() => {
-    const handleRedirect = async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        if (result) {
-          // Redirect after login success
-          navigate('/');
-        }
-      } catch (error) {
-        console.error('Redirect error:', error);
-        dispatch(setMessage({ text: 'Login gagal. Coba lagi.', type: 'error' }));
-      }
-    };
-    handleRedirect();
-  }, [navigate, dispatch]);
+  }, [isAuthenticated, navigate]);
 
   const handleGoogleLogin = async () => {
-    try {
-      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-      
-      if (isMobile) {
-        await signInWithRedirect(auth, googleProvider);
-      } else {
-        await signInWithPopup(auth, googleProvider);
-        navigate('/');
-      }
-    } catch (error) {
-      console.error('Login error:', error);
-      dispatch(setMessage({ text: error.message || 'Login gagal. Coba lagi.', type: 'error' }));
+    const result = await login();
+    if (result.success) {
+      toast.success('Login berhasil!');
+      navigate('/');
+    } else {
+      toast.error(result.error || 'Login gagal');
     }
   };
 
@@ -68,7 +35,6 @@ export default function Login() {
     >
       <div className="bg-black/60 backdrop-blur-xl p-8 rounded-3xl w-full max-w-md border border-white/10">
         
-        {/* LOGO */}
         <div className="flex justify-center mb-6">
           <img src={logo} alt="ANJROT" className="w-24 h-24 object-contain" />
         </div>
@@ -78,24 +44,18 @@ export default function Login() {
           Bergabunglah dengan masa depan crypto mining
         </p>
 
-        {/* 🔥 GOOGLE LOGIN */}
         <button
           onClick={handleGoogleLogin}
-          className="w-full flex items-center justify-center gap-3 py-4 bg-white/10 hover:bg-white/20 rounded-xl text-white font-medium transition-all border border-white/10 hover:scale-105"
+          disabled={isLoading}
+          className="w-full flex items-center justify-center gap-3 py-4 bg-white/10 hover:bg-white/20 rounded-xl text-white font-medium transition-all border border-white/10 hover:scale-105 disabled:opacity-50"
         >
           <FcGoogle className="w-6 h-6" />
-          Login dengan Google
+          {isLoading ? 'Memuat...' : 'Login dengan Google'}
         </button>
 
         <p className="text-center text-xs text-gray-500 mt-4">
           Dengan melanjutkan, Anda menyetujui Syarat & Ketentuan
         </p>
-
-        {location.search.includes('ref=') && (
-          <p className="text-center text-xs text-orange-400 mt-2">
-            🎉 Anda menggunakan link referral! Dapatkan bonus 2 ANJROT setelah login!
-          </p>
-        )}
       </div>
     </div>
   );

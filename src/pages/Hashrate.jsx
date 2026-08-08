@@ -1,27 +1,19 @@
 // pages/Hashrate.jsx
 import { useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Zap, Coins, Clock, TrendingUp, ShoppingCart, CheckCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { ArrowLeft, Zap, Coins, Clock, TrendingUp, ShoppingCart } from "lucide-react";
 import { doc, updateDoc, arrayUnion, serverTimestamp } from "firebase/firestore";
+import { toast } from "react-hot-toast";
 
 import { db } from "../firebase/config";
-import { selectUser, updateBalance, addHashPack, addTransaction } from "../store/features/userSlice";
-import { setMessage } from "../store/features/appSlice";
-
-const PACKS = [
-  { id: 'basic', name: 'Basic', hashrate: 0.0001, priceANJROT: 500, duration: '30 hari', icon: '⚡', popular: false },
-  { id: 'standard', name: 'Standard', hashrate: 0.0005, priceANJROT: 2000, duration: '60 hari', icon: '🔥', popular: true },
-  { id: 'premium', name: 'Premium', hashrate: 0.002, priceANJROT: 7500, duration: '90 hari', icon: '💎', popular: false },
-  { id: 'elite', name: 'Elite', hashrate: 0.005, priceANJROT: 15000, duration: '180 hari', icon: '👑', popular: false },
-  { id: 'legendary', name: 'Legendary', hashrate: 0.02, priceANJROT: 50000, duration: '365 hari', icon: '🌟', popular: false },
-];
+import useAuthStore from "../store/authStore";
+import useHashrateStore from "../store/hashrateStore";
 
 export default function Hashrate() {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
-  const user = useSelector(selectUser);
+  const { user, updateBalance, addHashPack, addTransaction } = useAuthStore();
+  const { packs } = useHashrateStore();
   const [selectedPack, setSelectedPack] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -41,7 +33,7 @@ export default function Hashrate() {
     try {
       const pack = selectedPack;
       if (user.balance < pack.priceANJROT) {
-        dispatch(setMessage({ text: "❌ Saldo ANJROT tidak cukup!", type: "error" }));
+        toast.error("❌ Saldo ANJROT tidak cukup!");
         setIsLoading(false);
         return;
       }
@@ -74,9 +66,9 @@ export default function Hashrate() {
         })
       });
 
-      dispatch(updateBalance(newBalance));
-      dispatch(addHashPack(hashPack));
-      dispatch(addTransaction({
+      updateBalance(newBalance);
+      addHashPack(hashPack);
+      addTransaction({
         id: `tx_${Date.now()}`,
         type: "purchase_hashrate",
         asset: "ANJROT",
@@ -84,13 +76,13 @@ export default function Hashrate() {
         status: "completed",
         timestamp: new Date().toISOString(),
         note: `Beli ${pack.name}`,
-      }));
+      });
 
-      dispatch(setMessage({ text: `✅ ${pack.name} berhasil dibeli!`, type: "success" }));
+      toast.success(`✅ ${pack.name} berhasil dibeli!`);
       setSelectedPack(null);
     } catch (error) {
       console.error("Purchase error:", error);
-      dispatch(setMessage({ text: "❌ Gagal membeli paket", type: "error" }));
+      toast.error("❌ Gagal membeli paket");
     } finally {
       setIsLoading(false);
     }
@@ -126,7 +118,7 @@ export default function Hashrate() {
       </div>
 
       <div className="mx-4 mt-4 space-y-4">
-        {PACKS.map((pack) => (
+        {packs.map((pack) => (
           <motion.div
             key={pack.id}
             initial={{ opacity: 0, y: 20 }}

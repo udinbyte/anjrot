@@ -1,45 +1,20 @@
 // components/MiningButton.jsx
-import { useDispatch, useSelector } from 'react-redux';
-import { doc, updateDoc, serverTimestamp, arrayUnion, getDoc } from 'firebase/firestore';
-import { motion } from 'framer-motion';
-import { Zap, Clock, Coins } from 'lucide-react';
-
-import { db } from '../firebase/config';
-import { selectUser, updateBalance, updateMining, addTransaction } from '../store/features/userSlice';
-import { setMessage } from '../store/features/appSlice';
+import { motion } from "framer-motion";
+import { Zap, Clock, Coins } from "lucide-react";
+import useAuthStore from "../store/authStore";
 
 export default function MiningButton({ claimable, onClaim }) {
-  const dispatch = useDispatch();
-  const user = useSelector(selectUser);
-
+  const { user } = useAuthStore();
   const isMining = user?.mining?.isActive || false;
-
-  const startMining = async () => {
-    try {
-      const userRef = doc(db, 'users', user.uid);
-      await updateDoc(userRef, {
-        'mining.isActive': true,
-        'mining.startedAt': serverTimestamp(),
-      });
-      dispatch(updateMining({ isActive: true, startedAt: new Date().toISOString() }));
-      dispatch(setMessage({ text: '⛏️ Mining dimulai!', type: 'success' }));
-    } catch (error) {
-      console.error('Start mining error:', error);
-      dispatch(setMessage({ text: '❌ Gagal memulai mining', type: 'error' }));
-    }
-  };
 
   const handlePress = () => {
     if (isMining && claimable > 0.0001) {
-      onClaim(); // claim
+      onClaim();
     } else if (!isMining) {
-      startMining();
-    } else {
-      dispatch(setMessage({ text: '⏳ Tunggu hingga claim tersedia', type: 'info' }));
+      // Start mining via Home page
     }
   };
 
-  // 🔥 TAMPILAN BUTTON
   let content;
   if (isMining && claimable > 0.0001) {
     content = (

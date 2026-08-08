@@ -1,14 +1,13 @@
 // pages/Referrals.jsx
 import { useState } from "react";
-import { useSelector } from "react-redux";
-import { motion } from "framer-motion";
-import { ArrowLeft, Copy, Share2, Users, Gift, CheckCircle, UserPlus, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { selectUser } from "../store/features/userSlice";
+import { motion } from "framer-motion";
+import { ArrowLeft, Copy, Share2, Users, Gift, CheckCircle, UserPlus } from "lucide-react";
+import useAuthStore from "../store/authStore";
 
 export default function Referrals() {
   const navigate = useNavigate();
-  const user = useSelector(selectUser);
+  const { user } = useAuthStore();
   const [copied, setCopied] = useState(false);
 
   const referralCode = user?.referralCode || user?.uid?.slice(0, 8).toUpperCase() || "XXXX";

@@ -1,13 +1,12 @@
 // pages/Receive.jsx
 import { useState } from "react";
-import { useSelector } from "react-redux";
-import { ArrowLeft, Copy, QrCode, CheckCircle, Share2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { selectUser } from "../store/features/userSlice";
+import { ArrowLeft, Copy, QrCode, CheckCircle, Share2 } from "lucide-react";
+import useAuthStore from "../store/authStore";
 
 export default function ReceivePage() {
   const navigate = useNavigate();
-  const user = useSelector(selectUser);
+  const { user } = useAuthStore();
   const [copied, setCopied] = useState(false);
 
   const walletAddress = user?.walletAddress || `ANJROT-${user?.uid?.slice(0, 8) || 'xxxx'}-${user?.uid?.slice(-8) || 'xxxx'}`;

@@ -1,14 +1,10 @@
 // App.jsx
 import { useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc, setDoc, onSnapshot, collection, query, where, getDocs, updateDoc, arrayUnion } from 'firebase/firestore';
 import { Toaster } from 'react-hot-toast';
+import { useLocation } from 'react-router-dom';
 
-import { auth, db } from './firebase/config';
-import { setUser, setLoading, clearUser } from './store/features/userSlice';
-import { setAuth, clearReferralCode } from './store/features/appSlice';
+import useAuthStore from './store/authStore';
 
 import Login from './pages/Login';
 import Home from './pages/Home';
@@ -21,146 +17,35 @@ import Leaderboard from './pages/Leaderboard';
 import BottomNavbar from './components/BottomNavbar';
 
 function App() {
-  const dispatch = useDispatch();
-  const { isAuthenticated, isLoading, referralCode } = useSelector((state) => state.app);
+  const { 
+    user, 
+    isAuthenticated, 
+    isLoading, 
+    initAuth, 
+    cleanup,
+    setReferralCode,
+    clearReferralCode 
+  } = useAuthStore();
+  const location = useLocation();
 
-  // 🔥 FALLBACK: KALO 5 DETIK MASIH LOADING, FORCE SELESAI
+  // 🔥 CEK REFERRAL DARI URL
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (isLoading) {
-        console.warn('🔥 FALLBACK: Force loading false after 5s');
-        dispatch(setLoading(false));
-      }
-    }, 5000);
-    return () => clearTimeout(timer);
-  }, [isLoading, dispatch]);
+    const params = new URLSearchParams(location.search);
+    const refCode = params.get('ref');
+    if (refCode) {
+      setReferralCode(refCode);
+    } else {
+      clearReferralCode();
+    }
+  }, [location, setReferralCode, clearReferralCode]);
 
+  // 🔥 INIT AUTH
   useEffect(() => {
-    console.log('🔥 App mounted - Auth listener starting...');
+    initAuth();
+    return () => cleanup();
+  }, [initAuth, cleanup]);
 
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      console.log('🔥 onAuthStateChanged FIRED!', firebaseUser?.uid || 'No user');
-
-      try {
-        dispatch(setLoading(true));
-
-        if (firebaseUser) {
-          const { uid, email, displayName, photoURL } = firebaseUser;
-          const walletAddress = `ANJROT-${uid.slice(0, 8)}-${uid.slice(-8)}`;
-          const referralCodeGen = uid.slice(0, 8).toUpperCase();
-
-          const userRef = doc(db, 'users', uid);
-          const userDoc = await getDoc(userRef);
-          console.log('🔥 User doc exists:', userDoc.exists());
-
-          if (!userDoc.exists()) {
-            let referredBy = null;
-            const refCode = referralCode;
-
-            if (refCode) {
-              try {
-                const usersRef = collection(db, 'users');
-                const q = query(usersRef, where('referralCode', '==', refCode));
-                const querySnapshot = await getDocs(q);
-
-                if (!querySnapshot.empty) {
-                  const referrerDoc = querySnapshot.docs[0];
-                  const referrerData = referrerDoc.data();
-                  const isAlreadyReferred = referrerData.referrals && referrerData.referrals[uid];
-
-                  if (!isAlreadyReferred) {
-                    referredBy = referrerDoc.id;
-                    await updateDoc(doc(db, 'users', referrerDoc.id), {
-                      balance: (referrerData.balance || 0) + 2,
-                      [`referrals.${uid}`]: {
-                        uid,
-                        displayName: displayName || 'User',
-                        joinedAt: new Date().toISOString(),
-                        bonus: 2,
-                      },
-                      transactions: arrayUnion({
-                        id: `tx_${Date.now()}`,
-                        type: 'receive',
-                        asset: 'ANJROT',
-                        amount: 2,
-                        status: 'completed',
-                        timestamp: new Date().toISOString(),
-                        note: `Bonus referral dari ${displayName || 'User'}`,
-                      }),
-                    });
-                  }
-                }
-              } catch (error) {
-                console.error('Error processing referral:', error);
-              }
-              dispatch(clearReferralCode());
-            }
-
-            const newUser = {
-              uid,
-              email,
-              displayName: displayName || 'User',
-              photoURL: photoURL || null,
-              walletAddress,
-              balance: 0,
-              assets: {
-                ANJROT: { symbol: 'ANJROT', balance: 0, usdValue: 0 },
-                BTC: { symbol: 'BTC', balance: 0, usdValue: 0 },
-                SOL: { symbol: 'SOL', balance: 0, usdValue: 0 },
-                USDT: { symbol: 'USDT', balance: 0, usdValue: 0 },
-              },
-              transactions: [],
-              mining: {
-                isActive: false,
-                rate: 0,
-                totalHashrate: 0,
-                hashPacks: [],
-                startedAt: null,
-                lastClaimedAt: null,
-                totalEarned: 0,
-                claimable: 0,
-              },
-              referralCode: referralCodeGen,
-              referredBy: referredBy,
-              referrals: {},
-              daily: {
-                streak: 0,
-                lastClaimedAt: null,
-              },
-              createdAt: new Date().toISOString(),
-            };
-
-            await setDoc(userRef, newUser);
-            dispatch(setUser(newUser));
-          } else {
-            // 🔥 REAL-TIME LISTENER
-            const unsubscribeUser = onSnapshot(userRef, (doc) => {
-              if (doc.exists()) {
-                dispatch(setUser(doc.data()));
-              }
-            });
-            return () => unsubscribeUser();
-          }
-
-          dispatch(setAuth(true));
-        } else {
-          console.log('🔥 No user, redirect to login');
-          dispatch(clearUser());
-          dispatch(setAuth(false));
-        }
-
-        dispatch(setLoading(false));
-        console.log('🔥 setLoading(false) called');
-      } catch (error) {
-        console.error('🔥 Auth error:', error);
-        dispatch(setLoading(false));
-        dispatch(setAuth(false));
-      }
-    });
-
-    return () => unsubscribe();
-  }, [dispatch, referralCode]);
-
+  // 🔥 LOADING
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">

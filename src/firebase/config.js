@@ -2,6 +2,7 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getAuth, GoogleAuthProvider } from "firebase/auth"
+
 const firebaseConfig = {
   apiKey: "AIzaSyBPc2fA7R2pLZpcuyumQLAxsib4PsruE00",
   authDomain: "anrjot-mining.firebaseapp.com",
@@ -11,6 +12,7 @@ const firebaseConfig = {
   appId: "1:1092911203362:web:e4a2390b34f041fa52767b",
   measurementId: "G-1PZ7W908B9"
 };
+
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);

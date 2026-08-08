@@ -1,8 +1,7 @@
 // App.jsx
 import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
-import { useLocation } from 'react-router-dom';
 
 import useAuthStore from './store/authStore';
 
@@ -16,17 +15,10 @@ import Hashrate from './pages/Hashrate';
 import Leaderboard from './pages/Leaderboard';
 import BottomNavbar from './components/BottomNavbar';
 
-function App() {
-  const { 
-    user, 
-    isAuthenticated, 
-    isLoading, 
-    initAuth, 
-    cleanup,
-    setReferralCode,
-    clearReferralCode 
-  } = useAuthStore();
+// 🔥 PISAHKAN KOMPONEN YANG PAKE useLocation!
+function AppContent() {
   const location = useLocation();
+  const { setReferralCode, clearReferralCode } = useAuthStore();
 
   // 🔥 CEK REFERRAL DARI URL
   useEffect(() => {
@@ -38,6 +30,27 @@ function App() {
       clearReferralCode();
     }
   }, [location, setReferralCode, clearReferralCode]);
+
+  return (
+    <>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/" element={<Home />} />
+        <Route path="/wallet" element={<Wallet />} />
+        <Route path="/send" element={<Send />} />
+        <Route path="/receive" element={<Receive />} />
+        <Route path="/referrals" element={<Referrals />} />
+        <Route path="/hashrate" element={<Hashrate />} />
+        <Route path="/leaderboard" element={<Leaderboard />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+      <BottomNavbar />
+    </>
+  );
+}
+
+function App() {
+  const { isAuthenticated, isLoading, initAuth, cleanup } = useAuthStore();
 
   // 🔥 INIT AUTH
   useEffect(() => {
@@ -60,18 +73,7 @@ function App() {
   return (
     <BrowserRouter>
       <Toaster position="top-center" toastOptions={{ style: { background: '#1a1a2e', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' } }} />
-      <Routes>
-        <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <Login />} />
-        <Route path="/" element={isAuthenticated ? <Home /> : <Navigate to="/login" replace />} />
-        <Route path="/wallet" element={isAuthenticated ? <Wallet /> : <Navigate to="/login" replace />} />
-        <Route path="/send" element={isAuthenticated ? <Send /> : <Navigate to="/login" replace />} />
-        <Route path="/receive" element={isAuthenticated ? <Receive /> : <Navigate to="/login" replace />} />
-        <Route path="/referrals" element={isAuthenticated ? <Referrals /> : <Navigate to="/login" replace />} />
-        <Route path="/hashrate" element={isAuthenticated ? <Hashrate /> : <Navigate to="/login" replace />} />
-        <Route path="/leaderboard" element={isAuthenticated ? <Leaderboard /> : <Navigate to="/login" replace />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-      {isAuthenticated && <BottomNavbar />}
+      <AppContent />
     </BrowserRouter>
   );
 }

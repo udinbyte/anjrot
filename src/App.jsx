@@ -8,7 +8,7 @@ import { Toaster } from 'react-hot-toast';
 
 import { auth, db } from './firebase/config';
 import { setUser, setLoading, clearUser } from './store/features/userSlice';
-import { setAuth, setReferralCode, clearReferralCode } from './store/features/appSlice';
+import { setAuth, clearReferralCode } from './store/features/appSlice';
 
 import Login from './pages/Login';
 import Home from './pages/Home';
@@ -24,122 +24,138 @@ function App() {
   const dispatch = useDispatch();
   const { isAuthenticated, isLoading, referralCode } = useSelector((state) => state.app);
 
+  // 🔥 FALLBACK: KALO 5 DETIK MASIH LOADING, FORCE SELESAI
   useEffect(() => {
+    const timer = setTimeout(() => {
+      if (isLoading) {
+        console.warn('🔥 FALLBACK: Force loading false after 5s');
+        dispatch(setLoading(false));
+      }
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [isLoading, dispatch]);
+
+  useEffect(() => {
+    console.log('🔥 App mounted - Auth listener starting...');
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      dispatch(setLoading(true));
+      console.log('🔥 onAuthStateChanged FIRED!', firebaseUser?.uid || 'No user');
 
-      if (firebaseUser) {
-        const { uid, email, displayName, photoURL } = firebaseUser;
-        const walletAddress = `ANJROT-${uid.slice(0, 8)}-${uid.slice(-8)}`;
-        const referralCodeGen = uid.slice(0, 8).toUpperCase();
+      try {
+        dispatch(setLoading(true));
 
-        const userRef = doc(db, 'users', uid);
-        const userDoc = await getDoc(userRef);
+        if (firebaseUser) {
+          const { uid, email, displayName, photoURL } = firebaseUser;
+          const walletAddress = `ANJROT-${uid.slice(0, 8)}-${uid.slice(-8)}`;
+          const referralCodeGen = uid.slice(0, 8).toUpperCase();
 
-        if (!userDoc.exists()) {
-          // 🔥 CEK REFERRAL CODE DARI URL (disimpan di app.referralCode)
-          let referredBy = null;
-          const refCode = referralCode;
+          const userRef = doc(db, 'users', uid);
+          const userDoc = await getDoc(userRef);
+          console.log('🔥 User doc exists:', userDoc.exists());
 
-          if (refCode) {
-            try {
-              const usersRef = collection(db, 'users');
-              const q = query(usersRef, where('referralCode', '==', refCode));
-              const querySnapshot = await getDocs(q);
-              
-              if (!querySnapshot.empty) {
-                const referrerDoc = querySnapshot.docs[0];
-                const referrerData = referrerDoc.data();
-                
-                // 🔥 CEK APAKAH USER SUDAH PERNAH DI-REFER
-                const isAlreadyReferred = referrerData.referrals && referrerData.referrals[uid];
-                
-                if (!isAlreadyReferred) {
-                  referredBy = referrerDoc.id;
-                  
-                  // 🔥 BONUS 2 ANJROT UNTUK REFERRER
-                  await updateDoc(doc(db, 'users', referrerDoc.id), {
-                    balance: (referrerData.balance || 0) + 2,
-                    [`referrals.${uid}`]: {
-                      uid,
-                      displayName: displayName || 'User',
-                      joinedAt: new Date().toISOString(),
-                      bonus: 2,
-                    },
-                    transactions: arrayUnion({
-                      id: `tx_${Date.now()}`,
-                      type: 'receive',
-                      asset: 'ANJROT',
-                      amount: 2,
-                      status: 'completed',
-                      timestamp: new Date().toISOString(),
-                      note: `Bonus referral dari ${displayName || 'User'}`,
-                    }),
-                  });
+          if (!userDoc.exists()) {
+            let referredBy = null;
+            const refCode = referralCode;
+
+            if (refCode) {
+              try {
+                const usersRef = collection(db, 'users');
+                const q = query(usersRef, where('referralCode', '==', refCode));
+                const querySnapshot = await getDocs(q);
+
+                if (!querySnapshot.empty) {
+                  const referrerDoc = querySnapshot.docs[0];
+                  const referrerData = referrerDoc.data();
+                  const isAlreadyReferred = referrerData.referrals && referrerData.referrals[uid];
+
+                  if (!isAlreadyReferred) {
+                    referredBy = referrerDoc.id;
+                    await updateDoc(doc(db, 'users', referrerDoc.id), {
+                      balance: (referrerData.balance || 0) + 2,
+                      [`referrals.${uid}`]: {
+                        uid,
+                        displayName: displayName || 'User',
+                        joinedAt: new Date().toISOString(),
+                        bonus: 2,
+                      },
+                      transactions: arrayUnion({
+                        id: `tx_${Date.now()}`,
+                        type: 'receive',
+                        asset: 'ANJROT',
+                        amount: 2,
+                        status: 'completed',
+                        timestamp: new Date().toISOString(),
+                        note: `Bonus referral dari ${displayName || 'User'}`,
+                      }),
+                    });
+                  }
                 }
+              } catch (error) {
+                console.error('Error processing referral:', error);
               }
-            } catch (error) {
-              console.error('Error processing referral:', error);
+              dispatch(clearReferralCode());
             }
-            
-            // 🔥 CLEAR REFERRAL CODE
-            dispatch(clearReferralCode());
+
+            const newUser = {
+              uid,
+              email,
+              displayName: displayName || 'User',
+              photoURL: photoURL || null,
+              walletAddress,
+              balance: 0,
+              assets: {
+                ANJROT: { symbol: 'ANJROT', balance: 0, usdValue: 0 },
+                BTC: { symbol: 'BTC', balance: 0, usdValue: 0 },
+                SOL: { symbol: 'SOL', balance: 0, usdValue: 0 },
+                USDT: { symbol: 'USDT', balance: 0, usdValue: 0 },
+              },
+              transactions: [],
+              mining: {
+                isActive: false,
+                rate: 0,
+                totalHashrate: 0,
+                hashPacks: [],
+                startedAt: null,
+                lastClaimedAt: null,
+                totalEarned: 0,
+                claimable: 0,
+              },
+              referralCode: referralCodeGen,
+              referredBy: referredBy,
+              referrals: {},
+              daily: {
+                streak: 0,
+                lastClaimedAt: null,
+              },
+              createdAt: new Date().toISOString(),
+            };
+
+            await setDoc(userRef, newUser);
+            dispatch(setUser(newUser));
+          } else {
+            // 🔥 REAL-TIME LISTENER
+            const unsubscribeUser = onSnapshot(userRef, (doc) => {
+              if (doc.exists()) {
+                dispatch(setUser(doc.data()));
+              }
+            });
+            return () => unsubscribeUser();
           }
 
-          // 🔥 CREATE NEW USER
-          const newUser = {
-            uid,
-            email,
-            displayName: displayName || 'User',
-            photoURL: photoURL || null,
-            walletAddress,
-            balance: 0,
-            assets: {
-              ANJROT: { symbol: 'ANJROT', balance: 0, usdValue: 0 },
-              BTC: { symbol: 'BTC', balance: 0, usdValue: 0 },
-              SOL: { symbol: 'SOL', balance: 0, usdValue: 0 },
-              USDT: { symbol: 'USDT', balance: 0, usdValue: 0 },
-            },
-            transactions: [],
-            mining: {
-              isActive: false,
-              rate: 0,
-              totalHashrate: 0,
-              hashPacks: [],
-              startedAt: null,
-              lastClaimedAt: null,
-              totalEarned: 0,
-              claimable: 0,
-            },
-            referralCode: referralCodeGen,
-            referredBy: referredBy,
-            referrals: {},
-            daily: {
-              streak: 0,
-              lastClaimedAt: null,
-            },
-            createdAt: new Date().toISOString(),
-          };
-
-          await setDoc(userRef, newUser);
-          dispatch(setUser(newUser));
+          dispatch(setAuth(true));
         } else {
-          // 🔥 REAL-TIME LISTENER
-          const unsubscribeUser = onSnapshot(userRef, (doc) => {
-            if (doc.exists()) {
-              dispatch(setUser(doc.data()));
-            }
-          });
-          return () => unsubscribeUser();
+          console.log('🔥 No user, redirect to login');
+          dispatch(clearUser());
+          dispatch(setAuth(false));
         }
 
-        dispatch(setAuth(true));
-      } else {
-        dispatch(clearUser());
+        dispatch(setLoading(false));
+        console.log('🔥 setLoading(false) called');
+      } catch (error) {
+        console.error('🔥 Auth error:', error);
+        dispatch(setLoading(false));
         dispatch(setAuth(false));
       }
-
-      dispatch(setLoading(false));
     });
 
     return () => unsubscribe();
